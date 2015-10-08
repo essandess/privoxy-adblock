@@ -7,6 +7,8 @@ Based on code by Andrwe Lord Weber found [here](http://andrwe.org/scripting/bash
 
 This script is modified to work in an OS X environment and does not require root privileges.
 
+This fork of https://github.com/skroll/privoxy-adblock is modified to download adblock's `easylist.txt` to `/ust/local/etc`, update the filter and action files, and restart Privoxy only when a newer version is available. A plist to accomplish this is provided in the git https://github.com/essandess/osxfortress.
+
 **Note:** This script requires `wget` to be installed on the system.
 
 Usage
