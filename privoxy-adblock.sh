@@ -1,8 +1,9 @@
 #!/bin/bash
 
 sedcmd=${SEDCMD:-sed}
-defaultprivoxydir="/usr/local/etc/privoxy"
+defaultprivoxydir="/opt/local/etc/privoxy"
 defaulturls=("https://easylist-downloads.adblockplus.org/easylist.txt")
+downloaddir="/usr/local/etc"
 
 #===  FUNCTION  ================================================================
 #          NAME:  cleanup
@@ -11,9 +12,9 @@ defaulturls=("https://easylist-downloads.adblockplus.org/easylist.txt")
 #       RETURNS:  none
 #===============================================================================
 function cleanup() {
-  trap - INT TERM EXIT
-  [[ -f "${pidfile}" ]] && rm "$pidfile"
-  exit
+trap - INT TERM EXIT
+[[ -f "${pidfile}" ]] && rm "$pidfile"
+exit
 }
 
 #===  FUNCTION  ================================================================
@@ -23,13 +24,13 @@ function cleanup() {
 #       RETURNS:  boolean
 #===============================================================================
 function isrunning() {
-  pidfile="${1}"
-  [[ ! -f "${pidfile}" ]] && return 1  #pid file is nonexistent
-  procpid=$(<"${pidfile}")
-  [[ -z "${procpid}" ]] && return 1  #pid file contains no pid
-  # check process list for pid existence and is an instance of this script
-  [[ ! $(ps -p ${procpid} | grep $(basename ${0})) == "" ]] && value=0 || value=1
-  return ${value}
+pidfile="${1}"
+[[ ! -f "${pidfile}" ]] && return 1  #pid file is nonexistent
+procpid=$(<"${pidfile}")
+[[ -z "${procpid}" ]] && return 1  #pid file contains no pid
+# check process list for pid existence and is an instance of this script
+[[ ! $(ps -p ${procpid} | grep $(basename ${0})) == "" ]] && value=0 || value=1
+return ${value}
 }
 
 #===  FUNCTION  ================================================================
@@ -39,22 +40,22 @@ function isrunning() {
 #       RETURNS:  none
 #===============================================================================
 function createpidfile() {
-  mypid=${1}
-  pidfile=${2}
-  #Close stderr, don't overwrite existing file, shove my pid in the lock file.
-  $(exec 2>&-; set -o noclobber; echo "$mypid" > "$pidfile")
-  [[ ! -f "${pidfile}" ]] && exit #Lock file creation failed
-  procpid=$(<"${pidfile}")
-  [[ ${mypid} -ne ${procpid} ]] && {
-    #I'm not the pid in the lock file
-    # Is the process pid in the lockfile still running?
-    isrunning "${pidfile}" || {
-      # No.  Kill the pidfile and relaunch
-      rm "${pidfile}"
-      $0 $@
-    }
-    exit
-  }
+mypid=${1}
+pidfile=${2}
+#Close stderr, don't overwrite existing file, shove my pid in the lock file.
+$(exec 2>&-; set -o noclobber; echo "$mypid" > "$pidfile")
+[[ ! -f "${pidfile}" ]] && exit #Lock file creation failed
+procpid=$(<"${pidfile}")
+[[ ${mypid} -ne ${procpid} ]] && {
+#I'm not the pid in the lock file
+# Is the process pid in the lockfile still running?
+isrunning "${pidfile}" || {
+# No.  Kill the pidfile and relaunch
+rm "${pidfile}"
+$0 $@
+}
+exit
+}
 }
 
 #===  FUNCTION  ================================================================
@@ -64,11 +65,11 @@ function createpidfile() {
 #       RETURNS:  path and filename
 #===============================================================================
 function pidfilename() {
-  myfile=$(basename "$0" .sh)
-  whoiam=$(whoami)
-  mypidfile="/tmp/${myfile}.pid"
-  [[ "$whoiam" == 'root' ]] && mypidfile="/var/run/$myfile.pid"
-  echo $mypidfile
+myfile=$(basename "$0" .sh)
+whoiam=$(whoami)
+mypidfile="/tmp/${myfile}.pid"
+[[ "$whoiam" == 'root' ]] && mypidfile="/var/run/$myfile.pid"
+echo $mypidfile
 }
 
 #===  FUNCTION  ================================================================
@@ -78,22 +79,31 @@ function pidfilename() {
 #       RETURNS:  none
 #===============================================================================
 function doconvert() {
-  privoxydir=$1
-  urls=$2
-  for url in ${urls[@]}
-  do
-    file=${tempdir}/$(basename ${url})
-    actionfile=${file%\.*}.script.action
-    filterfile=${file%\.*}.script.filter
-    list=$(basename ${file%\.*})
+privoxydir=$1
+urls=$2
+for url in ${urls[@]}
+do
+    tmpfile=${tempdir}/$(basename ${url})
+    file=${downloaddir}/$(basename ${url})
+    [[ ! -d "$downloaddir" ]] && mkdir "$downloaddir"
+
+    echo "downloading ${url} ..."
+    PREDLHASH=`openssl sha256 ${file} | perl -ne 'chomp; s/.+= ([0-9a-f]+)/$1/; print $_'`
+    wget -t 3 -N -P ${downloaddir} "${url}" >${tempdir}/wget-${url//\//#}.log 2>&1
+    POSTDLHASH=`openssl sha256 ${file} | perl -ne 'chomp; s/.+= ([0-9a-f]+)/$1/; print $_'`
+    [[ $PREDLHASH = $POSTDLHASH ]] && exit 1	# No new download available
+
+    actionfile=${tmpfile%\.*}.script.action
+    filterfile=${tmpfile%\.*}.script.filter
+    list=$(basename ${tmpfile%\.*})
 
     # clean up files
-    [[ -f "${file}" ]] && rm "${file}"
+    [[ -f "${tmpfile}" ]] && rm "${tmpfile}"
     [[ -f "${actionfile}" ]] && rm "${actionfile}"
     [[ -f "${filterfile}" ]] && rm "${filterfile}"
 
-    echo "downloading ${url} ..."
-    wget -t 3 --no-check-certificate -O ${file} "${url}" >${tempdir}/wget-${url//\//#}.log 2>&1
+    #!echo "downloading ${url} ..."
+    #!wget -t 3 --no-check-certificate -O ${tmpfile} "${url}" >${tempdir}/wget-${url//\//#}.log 2>&1
 
     [ "$(grep -E '^.*\[Adblock.*\].*$' ${file})" == "" ] && echo "The list recieved from ${url} isn't an AdblockPlus list. Skipped" && continue
 
@@ -196,4 +206,3 @@ function main() {
 main $@
 
 exit 0
-
