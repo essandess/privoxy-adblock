@@ -88,10 +88,10 @@ do
     [[ ! -d "$downloaddir" ]] && mkdir "$downloaddir"
 
     echo "downloading ${url} ..."
-    PREDLHASH=`openssl sha256 ${file} | perl -ne 'chomp; s/.+= ([0-9a-f]+)/$1/; print $_'`
-    wget -t 3 -N -P ${downloaddir} "${url}" >${tempdir}/wget-${url//\//#}.log 2>&1
-    POSTDLHASH=`openssl sha256 ${file} | perl -ne 'chomp; s/.+= ([0-9a-f]+)/$1/; print $_'`
-    [[ $PREDLHASH = $POSTDLHASH ]] && exit 1	# No new download available
+    PREDLHASH=`/opt/local/bin/openssl sha256 ${file} | perl -ne 'chomp; s/.+= ([0-9a-f]+)/$1/; print $_'`
+    /opt/local/bin/wget -t 3 -N -P ${downloaddir} "${url}" >${tempdir}/wget-${url//\//#}.log
+    POSTDLHASH=`/opt/local/bin/openssl sha256 ${file} | perl -ne 'chomp; s/.+= ([0-9a-f]+)/$1/; print $_'`
+    [[ $PREDLHASH = $POSTDLHASH ]] && exit	# No new download available
 
     actionfile=${tmpfile%\.*}.script.action
     filterfile=${tmpfile%\.*}.script.filter
