@@ -1,6 +1,8 @@
 privoxy-adblock
 ===============
 
+This repo is deprecated because of [known issues](../../../../skroll/privoxy-adblock/issues/11) with rule conversion and lack of support for element hiding. The approach used in the repo [adblock2privoxy](../../../essandess/adblock2privoxy) is recommended instead.
+
 A bash script for OS X that converts adblock lists to privoxy's format.
 
 Based on code by Andrwe Lord Weber found [here](http://andrwe.org/scripting/bash/privoxy-blocklist). The original script did not work well in OS X due to the fact that it depended on `pidof` and other GNU/Linux specific behavior.
